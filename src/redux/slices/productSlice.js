@@ -1,5 +1,10 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import { getProductById, getProducts, saveProduct } from '../../firebase/productService'
+import {
+  getProductById,
+  getProducts,
+  markProductSold,
+  saveProduct,
+} from '../../firebase/productService'
 
 export const fetchProducts = createAsyncThunk('products/fetchProducts', getProducts)
 
@@ -12,6 +17,14 @@ export const upsertProduct = createAsyncThunk(
   async ({ values, currentUser, productId }) => {
     await saveProduct(values, currentUser, productId)
     return getProducts()
+  },
+)
+
+export const sellProduct = createAsyncThunk(
+  'products/sellProduct',
+  async ({ productId, currentUser }) => {
+    await markProductSold(productId, currentUser)
+    return productId
   },
 )
 
@@ -64,6 +77,21 @@ const productSlice = createSlice({
         state.items = action.payload
       })
       .addCase(upsertProduct.rejected, (state, action) => {
+        state.saving = false
+        state.error = action.error.message
+      })
+      .addCase(sellProduct.pending, (state) => {
+        state.saving = true
+        state.error = null
+      })
+      .addCase(sellProduct.fulfilled, (state, action) => {
+        state.saving = false
+        state.items = state.items.filter((product) => product.id !== action.payload)
+        if (state.selectedProduct?.id === action.payload) {
+          state.selectedProduct = { ...state.selectedProduct, isSold: true }
+        }
+      })
+      .addCase(sellProduct.rejected, (state, action) => {
         state.saving = false
         state.error = action.error.message
       })

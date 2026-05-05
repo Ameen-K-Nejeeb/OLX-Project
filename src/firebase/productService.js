@@ -38,10 +38,12 @@ export async function getProducts() {
     'Loading products',
   )
 
-  return snapshot.docs.map((item) => ({
-    id: item.id,
-    ...item.data(),
-  }))
+  return snapshot.docs
+    .map((item) => ({
+      id: item.id,
+      ...item.data(),
+    }))
+    .filter((product) => !product.isSold)
 }
 
 export async function getProductById(productId) {
@@ -82,10 +84,38 @@ export async function saveProduct(productData, currentUser, productId) {
   const created = await withTimeout(
     addDoc(productsRef, {
       ...payload,
+      isSold: false,
       createdAt: serverTimestamp(),
     }),
     'Product creation',
   )
 
   return created.id
+}
+
+export async function markProductSold(productId, currentUser) {
+  assertFirebaseReady()
+  const productRef = doc(db, 'products', productId)
+  const snapshot = await withTimeout(getDoc(productRef), 'Loading product')
+
+  if (!snapshot.exists()) {
+    throw new Error('Product not found.')
+  }
+
+  const product = snapshot.data()
+
+  if (product.sellerId !== currentUser.uid) {
+    throw new Error('Only the seller can mark this product as sold.')
+  }
+
+  await withTimeout(
+    updateDoc(productRef, {
+      isSold: true,
+      soldAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+    'Marking product as sold',
+  )
+
+  return productId
 }

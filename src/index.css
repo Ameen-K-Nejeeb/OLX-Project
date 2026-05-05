@@ -195,7 +195,9 @@ main {
   color: #ffffff;
 }
 
-.primary-button:disabled {
+.primary-button:disabled,
+.secondary-button:disabled,
+.ghost-button:disabled {
   cursor: not-allowed;
   opacity: 0.68;
 }
